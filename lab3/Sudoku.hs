@@ -20,10 +20,6 @@ data Sudoku = Sudoku [Row]
 rows :: Sudoku -> [Row]
 rows (Sudoku ms) = ms
 
--- help functions
---apply :: [a->b] -> a -> [b]
---apply fs x = [f x | f <- fs]
-
 -- | A sample sudoku puzzle
 example :: Sudoku
 example =
@@ -54,8 +50,6 @@ allBlankSudoku = Sudoku $ replicate 9 (replicate 9 Nothing)
 -- | isSudoku sud checks if sud is really a valid representation of a sudoku
 -- puzzle
 
--- and  [f rs | f <-[checkLength, checkRows, checkCells]]
--- and  $ apply [checkLength, checkRows, checkCells] rs
 isSudoku :: Sudoku -> Bool
 isSudoku (Sudoku rs) = checkLength rs && checkRows rs && checkCells rs
   where
@@ -97,7 +91,7 @@ printSudoku (Sudoku rs) = do
 
 -- | readSudoku file reads from the file, and either delivers it, or stops
 -- if the file did not contain a sudoku
-readSudoku :: FilePath -> IO Sudoku
+readSudoku :: FilePath -> IO Sudoku --todo
 readSudoku path = do
   txt <- readFile path
   let sud = Sudoku $ map (map charToCell) (lines txt)
@@ -110,7 +104,7 @@ readSudoku path = do
     err = error "Not a Sudoku!!!"
     charToCell:: Char -> Cell
     charToCell '.' = Nothing
-    charToCell n | elem n "123456789" = Just $ digitToInt n
+    charToCell n | elem n ['1'..'9'] = Just $ digitToInt n
                  | otherwise = err
 
 ------------------------------------------------------------------------------
@@ -119,21 +113,24 @@ readSudoku path = do
 
 -- | cell generates an arbitrary cell in a Sudoku
 cell :: Gen (Cell)
-cell = undefined
+cell = frequency [(9,return Nothing) , (1,Just <$> choose (1,9))]
 
 
 -- * C2
 
 -- | an instance for generating Arbitrary Sudokus
 instance Arbitrary Sudoku where
-  arbitrary = undefined
+  arbitrary = Sudoku <$> (vectorOf 9 (vectorOf 9 cell))
+
 
  -- hint: get to know the QuickCheck function vectorOf
 
 -- * C3
 
 prop_Sudoku :: Sudoku -> Bool
-prop_Sudoku = undefined
+prop_Sudoku = isSudoku
+
+
   -- hint: this definition is simple!
 
 ------------------------------------------------------------------------------
@@ -153,7 +150,7 @@ blocks :: Sudoku -> [Block]
 blocks (Sudoku sud) = concat [f sud | f <- [addRows, addCols, add3x3s]]
   where
     addRows :: [Row] -> [Block]
-    addRows rs = rs
+    addRows rs = rs                                             -- todo
     addCols :: [Row] -> [Block]
     addCols rs = transpose rs
     add3x3s :: [Row] -> [Block]
@@ -168,7 +165,7 @@ prop_blocks_lengths :: Sudoku -> Bool
 prop_blocks_lengths sud = len 27 bs && all (len 9) bs
     where
       len :: Int -> [a] -> Bool
-      len n bs = n == length bs
+      len n = (n == ) . length
       bs :: [Block]
       bs = blocks sud
 
