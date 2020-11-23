@@ -20,6 +20,10 @@ data Sudoku = Sudoku [Row]
 rows :: Sudoku -> [Row]
 rows (Sudoku ms) = ms
 
+-- help functions
+--apply :: [a->b] -> a -> [b]
+--apply fs x = [f x | f <- fs]
+
 -- | A sample sudoku puzzle
 example :: Sudoku
 example =
@@ -51,8 +55,9 @@ allBlankSudoku = Sudoku $ replicate 9 (replicate 9 Nothing)
 -- puzzle
 
 -- and  [f rs | f <-[checkLength, checkRows, checkCells]]
+-- and  $ apply [checkLength, checkRows, checkCells] rs
 isSudoku :: Sudoku -> Bool
-isSudoku (Sudoku rs) = checkLength rs && checkRows rs && checkCells rs  -- todo
+isSudoku (Sudoku rs) = checkLength rs && checkRows rs && checkCells rs
   where
     checkLength :: [a] -> Bool
     checkLength = (==) 9 . length
@@ -148,15 +153,24 @@ blocks :: Sudoku -> [Block]
 blocks (Sudoku sud) = concat [f sud | f <- [addRows, addCols, add3x3s]]
   where
     addRows :: [Row] -> [Block]
-    addRows sud = sud
-    addCols sud = transpose sud
-    add3x3s sud = [ concat (block r c sud) | r <- [0,3,6], c <- [0,3,6] ]
+    addRows rs = rs
+    addCols :: [Row] -> [Block]
+    addCols rs = transpose rs
+    add3x3s :: [Row] -> [Block]
+    add3x3s rs = [ block r c rs | r <- [0,3,6], c <- [0,3,6] ]
       where
-        block r c sud = map (take3 r) (take3 c sud)
+        block :: Int -> Int -> [Row] -> Block
+        block r c rs = concatMap (take3 r) (take3 c rs)
+        take3 :: Int -> [a] -> [a]
         take3 start list = take 3 (drop start list)
 
 prop_blocks_lengths :: Sudoku -> Bool
-prop_blocks_lengths = undefined
+prop_blocks_lengths sud = len 27 bs && all (len 9) bs
+    where
+      len :: Int -> [a] -> Bool
+      len n bs = n == length bs
+      bs :: [Block]
+      bs = blocks sud
 
 -- * D3
 
