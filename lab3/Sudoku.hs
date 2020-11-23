@@ -2,6 +2,7 @@ module Sudoku where
 
 import Test.QuickCheck
 import Data.Char
+import Data.List
 
 ------------------------------------------------------------------------------
 {- Lab 3A
@@ -106,7 +107,7 @@ readSudoku path = do
     charToCell '.' = Nothing
     charToCell n | elem n "123456789" = Just $ digitToInt n
                  | otherwise = err
-                 
+
 ------------------------------------------------------------------------------
 
 -- * C1
@@ -138,13 +139,21 @@ type Block = [Cell] -- a Row is also a Cell
 -- * D1
 
 isOkayBlock :: Block -> Bool
-isOkayBlock = undefined
+isOkayBlock b =  intersect b (map Just [1..9]) == (nub b \\ [Nothing])
 
 
 -- * D2
 
 blocks :: Sudoku -> [Block]
-blocks = undefined
+blocks (Sudoku sud) = concat [f sud | f <- [addRows, addCols, add3x3s]]
+  where
+    addRows :: [Row] -> [Block]
+    addRows sud = sud
+    addCols sud = transpose sud
+    add3x3s sud = [ concat (block r c sud) | r <- [0,3,6], c <- [0,3,6] ]
+      where
+        block r c sud = map (take3 r) (take3 c sud)
+        take3 start list = take 3 (drop start list)
 
 prop_blocks_lengths :: Sudoku -> Bool
 prop_blocks_lengths = undefined
@@ -152,7 +161,7 @@ prop_blocks_lengths = undefined
 -- * D3
 
 isOkay :: Sudoku -> Bool
-isOkay = undefined
+isOkay sud = all isOkayBlock (blocks sud)
 
 
 ---- Part A ends here --------------------------------------------------------
