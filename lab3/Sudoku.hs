@@ -6,8 +6,8 @@ import Data.List
 
 ------------------------------------------------------------------------------
 {- Lab 3A
-   Date: -/-/2020
-   Authors:Anton Forsberg
+   Date: 24/11/2020
+   Authors: Anton Forsberg and Erik Hermansson
    Lab group: 31
  -}
 -- | Representation of sudoku puzzles (allows some junk)
@@ -45,7 +45,7 @@ example =
 allBlankSudoku :: Sudoku
 allBlankSudoku = Sudoku $ replicate 9 (replicate 9 Nothing)
 
--- * A2
+-- * A2 -- todo
 
 -- | isSudoku sud checks if sud is really a valid representation of a sudoku
 -- puzzle
@@ -54,7 +54,7 @@ isSudoku :: Sudoku -> Bool
 isSudoku (Sudoku rs) = checkLength rs && checkRows rs && checkCells rs
   where
     checkLength :: [a] -> Bool
-    checkLength = (==) 9 . length
+    checkLength = (9 ==) . length
     checkRows :: [Row] -> Bool
     checkRows = all checkLength
     checkCells :: [Row] -> Bool
@@ -69,7 +69,7 @@ isSudoku (Sudoku rs) = checkLength rs && checkRows rs && checkCells rs
 -- | isFilled sud checks if sud is completely filled in,
 -- i.e. there are no blanks
 isFilled :: Sudoku -> Bool
-isFilled (Sudoku rs) = all (notElem Nothing) rs
+isFilled = all (notElem Nothing) . rows
 
 
 ------------------------------------------------------------------------------
@@ -80,14 +80,13 @@ isFilled (Sudoku rs) = all (notElem Nothing) rs
 -- the screen
 
 printSudoku :: Sudoku -> IO ()
-printSudoku (Sudoku rs) = do
-    foldMap (putStrLn . concatMap printCell) rs
+printSudoku = foldMap (putStrLn . concatMap printCell) . rows
     where
       printCell :: Cell -> String
       printCell (Just n) = show n
       printCell _  = "."
 
--- * B2
+-- * B2 -- todo
 
 -- | readSudoku file reads from the file, and either delivers it, or stops
 -- if the file did not contain a sudoku
@@ -144,7 +143,7 @@ isOkayBlock :: Block -> Bool
 isOkayBlock b =  intersect b (map Just [1..9]) == (nub b \\ [Nothing])
 
 
--- * D2
+-- * D2 -- todo
 
 blocks :: Sudoku -> [Block]
 blocks (Sudoku sud) = concat [f sud | f <- [addRows, addCols, add3x3s]]
@@ -172,8 +171,7 @@ prop_blocks_lengths sud = len 27 bs && all (len 9) bs
 -- * D3
 
 isOkay :: Sudoku -> Bool
-isOkay sud = all isOkayBlock (blocks sud)
-
+isOkay = all isOkayBlock . blocks
 
 ---- Part A ends here --------------------------------------------------------
 ------------------------------------------------------------------------------
