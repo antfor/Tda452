@@ -1,7 +1,6 @@
 module Sudoku where
 
 import Test.QuickCheck
-import Data.Char
 
 ------------------------------------------------------------------------------
 {- Lab 3A
@@ -18,6 +17,10 @@ data Sudoku = Sudoku [Row]
 
 rows :: Sudoku -> [Row]
 rows (Sudoku ms) = ms
+
+-- helper functions
+andMap :: (a -> Bool) -> ([a] -> Bool)
+andMap f = and . map f
 
 -- | A sample sudoku puzzle
 example :: Sudoku
@@ -48,28 +51,45 @@ allBlankSudoku = Sudoku $ replicate 9 (replicate 9 Nothing)
 
 -- | isSudoku sud checks if sud is really a valid representation of a sudoku
 -- puzzle
-
--- and  [f rs | f <-[checkLength, checkRows, checkCells]]
+{-
 isSudoku :: Sudoku -> Bool
-isSudoku (Sudoku rs) = checkLength rs && checkRows rs && checkCells rs  -- todo
+isSudoku (Sudoku rs) = and [checkRows rs, checkRow rs, checkCells rs]
   where
-    checkLength :: [a] -> Bool
-    checkLength = (==) 9 . length
     checkRows :: [Row] -> Bool
-    checkRows = all checkLength
+    checkRows rs = length rs == 9
+    checkRow :: [Row] -> Bool
+    checkRow rs = and $ map (\r -> length r == 9) rs
     checkCells :: [Row] -> Bool
-    checkCells = all (all checkCell)
+    checkCells rs = and $ map (\r -> and $ map checkCell r) rs
+          where
+            checkCell :: Cell -> Bool
+            checkCell (Just n) = 0 < n && n < 10
+            checkCell _ = True
+-}
+
+isSudoku :: Sudoku -> Bool
+isSudoku (Sudoku rs) = and [checkRows rs, checkRow rs, checkCells rs]
+  where
+    checkRows :: [Row] -> Bool
+    checkRows rs = checkLength rs
+    checkRow :: [Row] -> Bool
+    checkRow rs = andMap checkLength rs
+    checkCells :: [Row] -> Bool
+    checkCells rs = andMap (andMap checkCell) rs
       where
         checkCell :: Cell -> Bool
         checkCell (Just n) = 0 < n && n < 10
         checkCell _ = True
+    checkLength :: [a] -> Bool
+    checkLength as = length as == 9
 
 -- * A3
 
 -- | isFilled sud checks if sud is completely filled in,
 -- i.e. there are no blanks
 isFilled :: Sudoku -> Bool
-isFilled (Sudoku rs) = all (notElem Nothing) rs
+--isFilled (Sudoku rows) = and $ map (\row -> and $ map ((/=) Nothing) row) rows
+isFilled (Sudoku rs) = andMap (andMap ((/=) Nothing)) rs
 
 
 ------------------------------------------------------------------------------
@@ -78,35 +98,16 @@ isFilled (Sudoku rs) = all (notElem Nothing) rs
 
 -- | printSudoku sud prints a nice representation of the sudoku sud on
 -- the screen
-
 printSudoku :: Sudoku -> IO ()
-printSudoku (Sudoku rs) = do
-    foldMap (putStrLn . concatMap printCell) rs
-    where
-      printCell :: Cell -> String
-      printCell (Just n) = show n
-      printCell _  = "."
+printSudoku = undefined
 
 -- * B2
 
 -- | readSudoku file reads from the file, and either delivers it, or stops
 -- if the file did not contain a sudoku
 readSudoku :: FilePath -> IO Sudoku
-readSudoku path = do
-  txt <- readFile path
-  let sud = Sudoku $ map (map charToCell) (lines txt)
-  if (isSudoku sud)
-    then
-      return sud
-    else
-      err
-  where
-    err = error "Not a Sudoku!!!"
-    charToCell:: Char -> Cell
-    charToCell '.' = Nothing
-    charToCell n | elem n "123456789" = Just $ digitToInt n
-                 | otherwise = err
-                 
+readSudoku = undefined
+
 ------------------------------------------------------------------------------
 
 -- * C1
