@@ -1,9 +1,10 @@
-module Sudoku where
+--module Sudoku where
 
 import Test.QuickCheck
 import Data.Char
 import Data.List
 import Data.Maybe
+
 
 ------------------------------------------------------------------------------
 {- Lab 3A
@@ -187,9 +188,8 @@ blanks :: Sudoku -> [Pos]
 blanks = concatMap (\(n,r) -> zip [n,n..] (col r)) . zip [0..] . rows
   where
     col :: Row -> [Int]
-    col = map fst . filter (isNothing . snd) . zip [0 .. ]
-    --col = fst . unzip . filter (isNothing . snd) . zip [0..]
-
+    col = fst . unzip . filter (isNothing . snd) . zip [0..]
+    --col = map fst . filter (isNothing . snd) . zip [0 .. ]
 
 prop_blanks_allBlanks :: Bool
 prop_blanks_allBlanks = length (blanks allBlankSudoku) == 81
@@ -201,16 +201,22 @@ prop_blanks_allBlanks = length (blanks allBlankSudoku) == 81
 xs !!= (i, y) = take i xs ++ (y : drop (i + 1) xs)
 
 --todo
-{-
-prop_bangBangEquals_correct :: [Int] -> (Int, Int) -> Bool
-prop_bangBangEquals_correct ls (i,n) = checkLength && checkValue && revers
+
+prop_bangBangEquals_correct :: [Int] -> Int -> Int -> Property
+prop_bangBangEquals_correct xs i y = length xs > 0 ==> checkLength &&
+                                                       checkValue &&
+                                                       reverseBang
   where
-    bang = ls !!= (i , n)
-    val = (!!) i bang
-    checkLength = length ls == length bang
-    checkValue  = (not (isNothing val)) && (fromJust val == n)
-    revers = (!!=) ((!!=) ls (i,n))  ( i,((!!) i ls)) == ls
--}
+    index :: Int
+    index = mod i (length xs)
+    bang :: [Int]
+    bang = xs !!= (index , y)
+    checkLength :: Bool
+    checkLength = length xs == length bang
+    checkValue :: Bool
+    checkValue  = ((!!) bang index == y)
+    reverseBang :: Bool
+    reverseBang = (!!=) bang (index ,((!!) xs index)) == xs
 
 
 -- * E3
@@ -221,9 +227,13 @@ update (Sudoku rows) (r,c) cell = Sudoku $ rows !!= (r, row)
       row :: Row
       row = (!!) rows r !!= (c, cell)
 
---prop_update_updated :: ...
---prop_update_updated =
-
+prop_update_updated :: Sudoku -> Pos -> Cell -> Bool
+prop_update_updated s (x,y) c = (c ==) $ getValue p (update s p c)
+    where
+        p :: Pos
+        p = (mod x 9, mod y 9)
+        getValue :: Pos -> Sudoku -> Cell
+        getValue (r, c) s = (!!) ((!!) (rows s) r ) c
 
 ------------------------------------------------------------------------------
 
@@ -266,18 +276,14 @@ isSolutionOf s1 s2 = isOkay s1 && isFilled s1 && isSolutionOf'
 -- * F4
 
 prop_SolveSound :: Sudoku -> Property
-prop_SolveSound s = property $ solution r
+prop_SolveSound s = isOkay s && isSudoku s ==> solution (solve s)
             where
-                r :: Maybe Sudoku
-                r = solve s
                 solution :: Maybe Sudoku -> Bool
-                solution Nothing = True
-                solution _ = isSolutionOf (fromJust r) s
-
-
+                solution Nothing = False
+                solution res = isSolutionOf (fromJust res) s
 
 
 main :: IO()
-main = putStrLn "hej"
-     --line <- getLine
-     --readAndSolve $ "./tests/" ++ line ++ ".sud"
+main = do
+        line <- getLine
+        readAndSolve $ "./tests/" ++ line ++ ".sud"
