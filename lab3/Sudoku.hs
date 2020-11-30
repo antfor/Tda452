@@ -3,10 +3,11 @@ module Sudoku where
 import Test.QuickCheck
 import Data.Char
 import Data.List
+import Data.Maybe
 
 ------------------------------------------------------------------------------
 {- Lab 3A
-   Date: 24/11/2020
+   Date: 25/11/2020
    Authors: Anton Forsberg and Erik Hermansson
    Lab group: 31
  -}
@@ -45,7 +46,7 @@ example =
 allBlankSudoku :: Sudoku
 allBlankSudoku = Sudoku $ replicate 9 (replicate 9 Nothing)
 
--- * A2 -- todo
+-- * A2
 
 -- | isSudoku sud checks if sud is really a valid representation of a sudoku
 -- puzzle
@@ -86,11 +87,11 @@ printSudoku = foldMap (putStrLn . concatMap printCell) . rows
       printCell (Just n) = show n
       printCell _  = "."
 
--- * B2 -- todo
+-- * B2
 
 -- | readSudoku file reads from the file, and either delivers it, or stops
 -- if the file did not contain a sudoku
-readSudoku :: FilePath -> IO Sudoku --todo
+readSudoku :: FilePath -> IO Sudoku
 readSudoku path = do
   txt <- readFile path
   let sud = Sudoku $ map (map charToCell) (lines txt)
@@ -142,14 +143,13 @@ type Block = [Cell] -- a Row is also a Cell
 isOkayBlock :: Block -> Bool
 isOkayBlock b =  intersect b (map Just [1..9]) == (nub b \\ [Nothing])
 
-
--- * D2 -- todo
+-- * D2
 
 blocks :: Sudoku -> [Block]
 blocks (Sudoku sud) = concat [f sud | f <- [addRows, addCols, add3x3s]]
   where
     addRows :: [Row] -> [Block]
-    addRows rs = rs                                             -- todo
+    addRows rs = rs
     addCols :: [Row] -> [Block]
     addCols rs = transpose rs
     add3x3s :: [Row] -> [Block]
@@ -179,31 +179,53 @@ isOkay = all isOkayBlock . blocks
 
 
 -- | Positions are pairs (row,column),
--- (0,0) is top left corner, (8,8) is bottom left corner
+-- (0,0) is top left corner, (8,8) is bottom right  corner
 type Pos = (Int,Int)
 
 -- * E1
-
 blanks :: Sudoku -> [Pos]
-blanks = undefined
+blanks = concatMap (\(n,r) -> zip [n,n..] (col r)) . zip [0..] . rows
+  where
+    col :: Row -> [Int]
+    col = fst . unzip . filter (isNothing . snd) . zip [0..]
 
---prop_blanks_allBlanks :: ...
---prop_blanks_allBlanks =
+--test :: Sudoku -> [Pos]
+--test sud = [ zip $ fst t $ snd t | t <- unzip3 p
+--                                 , p <- (zip3 [0..] [0..] row) , not . isNothing . thd3 p
+--                                 | row <- rows sud  ]
+--                                 where thd3 (_, _, x) = x
+prop_blanks_allBlanks :: Bool
+prop_blanks_allBlanks = length (blanks allBlankSudoku) == 81
 
 
 -- * E2
 
-(!!=) :: [a] -> (Int,a) -> [a]
-xs !!= (i,y) = undefined
-
---prop_bangBangEquals_correct :: ...
---prop_bangBangEquals_correct =
+(!!=) :: [a] -> (Int,a) -> [a] --todo
+[] !!= a = []
+(x:xs) !!= (0,y) = y:xs
+(x:xs) !!= (i,y) = x:(xs !!= (i-1 , y))
+--snd . unzip . map (\x -> if i == fst x then (i,y) else x) . zip [0..] xs
+--[ snd $ unzip nl | nl <- zip [0..] xs, ]
+--todo
+{-
+prop_bangBangEquals_correct :: [Int] -> (Int, Int) -> Bool
+prop_bangBangEquals_correct ls (i,n) = checkLength && checkValue && revers
+  where
+    bang = ls !!= (i , n)
+    val = (!!) i bang
+    checkLength = length ls == length bang
+    checkValue  = (not (isNothing val)) && (fromJust val == n)
+    revers = (!!=) ((!!=) ls (i,n))  ( i,((!!) i ls)) == ls
+-}
 
 
 -- * E3
 
 update :: Sudoku -> Pos -> Cell -> Sudoku
-update = undefined
+update (Sudoku rows) (r,c) cell = Sudoku $ rows !!= (r, row)
+    where
+      row :: Row
+      row = (!!) rows r !!= (c, cell)
 
 --prop_update_updated :: ...
 --prop_update_updated =
@@ -212,11 +234,28 @@ update = undefined
 ------------------------------------------------------------------------------
 
 -- * F1
+solve :: Sudoku -> Maybe Sudoku
+solve s | isSudoku s = listToMaybe $ solve' s (blanks s)
 
+
+solve' :: Sudoku -> [Pos] -> [Sudoku]
+solve' s _ | not $ isOkay s = []
+solve' s (p:ps) = concatMap (\s' -> solve' s' ps) (map (update s p) (map Just [1..9]))
+solve' s []     = [s]
 
 -- * F2
 
-
+readAndSolve :: FilePath -> IO ()
+readAndSolve fp =do
+   s <- (solveAndPrint <$> (readSudoku fp))
+   s
+  where
+    solveAndPrint :: Sudoku -> IO ()
+    solveAndPrint sud | isNothing solution = putStrLn "(no solution)"
+                      | otherwise = printSudoku $ fromJust solution
+                        where
+                          solution :: Maybe Sudoku
+                          solution = solve sud
 -- * F3
 
 
