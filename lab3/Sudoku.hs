@@ -120,7 +120,7 @@ cell = frequency [(9,return Nothing) , (1,Just <$> choose (1,9))]
 
 -- | an instance for generating Arbitrary Sudokus
 instance Arbitrary Sudoku where
-  arbitrary = Sudoku <$> (vectorOf 9 (vectorOf 9 cell))
+  arbitrary = Sudoku <$> vectorOf 9 (vectorOf 9 cell)
 
 
  -- hint: get to know the QuickCheck function vectorOf
@@ -187,25 +187,19 @@ blanks :: Sudoku -> [Pos]
 blanks = concatMap (\(n,r) -> zip [n,n..] (col r)) . zip [0..] . rows
   where
     col :: Row -> [Int]
-    col = fst . unzip . filter (isNothing . snd) . zip [0..]
+    col = map fst . filter (isNothing . snd) . zip [0 .. ]
+    --col = fst . unzip . filter (isNothing . snd) . zip [0..]
 
---test :: Sudoku -> [Pos]
---test sud = [ zip $ fst t $ snd t | t <- unzip3 p
---                                 , p <- (zip3 [0..] [0..] row) , not . isNothing . thd3 p
---                                 | row <- rows sud  ]
---                                 where thd3 (_, _, x) = x
+
 prop_blanks_allBlanks :: Bool
 prop_blanks_allBlanks = length (blanks allBlankSudoku) == 81
 
 
 -- * E2
 
-(!!=) :: [a] -> (Int,a) -> [a] --todo
-[] !!= a = []
-(x:xs) !!= (0,y) = y:xs
-(x:xs) !!= (i,y) = x:(xs !!= (i-1 , y))
---snd . unzip . map (\x -> if i == fst x then (i,y) else x) . zip [0..] xs
---[ snd $ unzip nl | nl <- zip [0..] xs, ]
+(!!=) :: [a] -> (Int,a) -> [a]
+xs !!= (i, y) = take i xs ++ (y : drop (i + 1) xs)
+
 --todo
 {-
 prop_bangBangEquals_correct :: [Int] -> (Int, Int) -> Bool
@@ -240,15 +234,13 @@ solve s | isSudoku s = listToMaybe $ solve' s (blanks s)
 
 solve' :: Sudoku -> [Pos] -> [Sudoku]
 solve' s _ | not $ isOkay s = []
-solve' s (p:ps) = concatMap (\s' -> solve' s' ps) (map (update s p) (map Just [1..9]))
+solve' s (p:ps) = concatMap ((`solve'` ps). update s p . Just) [1..9]
 solve' s []     = [s]
 
 -- * F2
 
 readAndSolve :: FilePath -> IO ()
-readAndSolve fp =do
-   s <- (solveAndPrint <$> (readSudoku fp))
-   s
+readAndSolve fp =do solveAndPrint =<< readSudoku fp
   where
     solveAndPrint :: Sudoku -> IO ()
     solveAndPrint sud | isNothing solution = putStrLn "(no solution)"
@@ -258,5 +250,34 @@ readAndSolve fp =do
                           solution = solve sud
 -- * F3
 
+isSolutionOf :: Sudoku -> Sudoku -> Bool
+isSolutionOf s1 s2 = isOkay s1 && isFilled s1 && isSolutionOf'
+    where
+        isSolutionOf' :: Bool
+        isSolutionOf' = all sameValue nonEmptyPos
+
+        nonEmptyPos :: [Pos]
+        nonEmptyPos = [(r,c)| r <- [0..8], c <- [0..8]] \\ blanks s2
+        sameValue :: Pos -> Bool
+        sameValue p = getValue p s1 == getValue p s2
+        getValue :: Pos -> Sudoku -> Cell
+        getValue (r, c) s = (!!) ((!!) (rows s) r ) c
 
 -- * F4
+
+prop_SolveSound :: Sudoku -> Property
+prop_SolveSound s = property $ solution r
+            where
+                r :: Maybe Sudoku
+                r = solve s
+                solution :: Maybe Sudoku -> Bool
+                solution Nothing = True
+                solution _ = isSolutionOf (fromJust r) s
+
+
+
+
+main :: IO()
+main = putStrLn "hej"
+     --line <- getLine
+     --readAndSolve $ "./tests/" ++ line ++ ".sud"
