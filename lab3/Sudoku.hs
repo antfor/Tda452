@@ -203,7 +203,7 @@ xs !!= (i, y) = take i xs ++ (y : drop (i + 1) xs)
 --todo
 
 prop_bangBangEquals_correct :: [Int] -> Int -> Int -> Property
-prop_bangBangEquals_correct xs i y = length xs > 0 ==> checkLength &&
+prop_bangBangEquals_correct xs i y = not (null xs)  ==> checkLength &&
                                                        checkValue &&
                                                        reverseBang
   where
@@ -214,9 +214,9 @@ prop_bangBangEquals_correct xs i y = length xs > 0 ==> checkLength &&
     checkLength :: Bool
     checkLength = length xs == length bang
     checkValue :: Bool
-    checkValue  = ((!!) bang index == y)
+    checkValue  = (!!) bang index == y
     reverseBang :: Bool
-    reverseBang = (!!=) bang (index ,((!!) xs index)) == xs
+    reverseBang = (!!=) bang (index, (!!) xs index) == xs
 
 
 -- * E3
@@ -240,6 +240,7 @@ prop_update_updated s (x,y) c = (c ==) $ getValue p (update s p c)
 -- * F1
 solve :: Sudoku -> Maybe Sudoku
 solve s | isSudoku s = listToMaybe $ solve' s (blanks s)
+        | otherwise  = Nothing
 
 
 solve' :: Sudoku -> [Pos] -> [Sudoku]
