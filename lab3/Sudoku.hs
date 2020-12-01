@@ -200,7 +200,6 @@ prop_blanks_allBlanks = length (blanks allBlankSudoku) == 81
 (!!=) :: [a] -> (Int,a) -> [a]
 xs !!= (i, y) = take i xs ++ (y : drop (i + 1) xs)
 
---todo
 
 prop_bangBangEquals_correct :: [Int] -> Int -> Int -> Property
 prop_bangBangEquals_correct xs i y = not (null xs)  ==> checkLength &&
@@ -285,6 +284,6 @@ prop_SolveSound s = isOkay s && isSudoku s ==> solution (solve s)
 
 
 main :: IO()
-main = do
-        line <- getLine
-        readAndSolve $ "./tests/" ++ line ++ ".sud"
+main = do quickCheck prop_SolveSound
+    --    line <- getLine
+    --    readAndSolve $ "./tests/" ++ line ++ ".sud"
