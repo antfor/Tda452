@@ -1,4 +1,4 @@
---module Sudoku where
+module Sudoku where
 
 import Test.QuickCheck
 import Data.Char
@@ -8,7 +8,7 @@ import Data.Maybe
 
 ------------------------------------------------------------------------------
 {- Lab 3B
-   Date: 1/12/2020
+   Date: 2/12/2020
    Authors: Anton Forsberg and Erik Hermansson
    Lab group: 31
  -}
@@ -232,10 +232,6 @@ solve :: Sudoku -> Maybe Sudoku
 solve s | isSudoku s = listToMaybe $ solve' s (sortPos (blocks s) (blanks s))
         | otherwise  = Nothing
 
-isNotOkay :: [Block] -> Bool
-isNotOkay = any (not . isOkayBlock)
-
--- todo gör [Pos] till [(pos,[possiblevalues])] slipper då räkna ut det för val men mer minne?
 solve' :: Sudoku -> [Pos] -> [Sudoku]
 solve' s (p:ps) | isNotOkay bl = []
                 | null val = []
@@ -246,8 +242,14 @@ solve' s (p:ps) | isNotOkay bl = []
 solve' s []  | isFilled s && isOkay s = [s]
              | otherwise = []
 
+
+isNotOkay :: [Block] -> Bool
+isNotOkay = any (not . isOkayBlock)
+
+
 possibleValues :: Pos -> [Block] -> [Cell]
 possibleValues (r,c) bl =(map Just [1..9]) \\ ((!!) bl r ++ (!!) bl (c + 9) ++ (!!) bl (18 + (3 * (div c 3) + (div r 3))))
+
 
 sortPos :: [Block] -> [Pos] ->[Pos]
 sortPos bl = sortBy (cmp bl)
@@ -261,41 +263,6 @@ sortPos bl = sortBy (cmp bl)
             where
                 sa = size bl a
                 sb = size bl b
-
-{-
-
-solve :: Sudoku -> Maybe Sudoku
-solve s | isSudoku s = listToMaybe $ solve' s sortedPos
-        | otherwise  = Nothing
-            where
-                sortedPos :: [Pos]
-                sortedPos = sortBy cmp (blanks s)
-                size :: Pos -> Int
-                size = length . (`possiblePos` (blocks s))
-                cmp a b | sa < sb  = LT
-                        | sa == sb = EQ
-                        | sa > sb = GT
-                    where
-                        sa = size a
-                        sb = size b
-isNotOkay :: [Block] -> Bool
-isNotOkay = any (not . isOkayBlock)
-solve' :: Sudoku -> [Pos] -> [Sudoku]
-solve' s (p:ps) | isNotOkay bl = []
-                | null value = []
-                | otherwise = concatMap ((`solve'` ps). update s p) value
-            where bl = blocks s
-                  value = possiblePos p bl
-solve' s []  | isFilled s && isOkay s = [s]
-             | otherwise = []
-possiblePos :: Pos -> [Block] -> [Cell]
-possiblePos (r,c) bl =(map Just [1..9]) \\ ((!!) bl r ++ (!!) bl (c + 9) ++ (!!) bl (18 + (3 * (div c 3) + (div r 3))))
--}
-
---(map Just [1..9]) \\
---solve' s _ | not $ isOkay s = []
---solve' s (p:ps) = concatMap ((`solve'` ps). update s p . Just) [1..9]
---solve' s []     = [s]
 -- * F2
 
 readAndSolve :: FilePath -> IO ()
