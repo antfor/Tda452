@@ -1,4 +1,4 @@
-module Sudoku where
+--module Sudoku where
 
 import Test.QuickCheck
 import Data.Char
@@ -229,12 +229,13 @@ prop_update_updated s (x,y) c = (c ==) $ getValue p (update s p c)
 -- * F1
 
 solve :: Sudoku -> Maybe Sudoku
-solve s | isSudoku s = listToMaybe $ solve' s (blanks s)
+solve s | isSudoku s = listToMaybe $ solve' s (sortPos (blocks s) (blanks s))
         | otherwise  = Nothing
 
 isNotOkay :: [Block] -> Bool
 isNotOkay = any (not . isOkayBlock)
 
+-- todo gör [Pos] till [(pos,[possiblevalues])] slipper då räkna ut det för val men mer minne?
 solve' :: Sudoku -> [Pos] -> [Sudoku]
 solve' s (p:ps) | isNotOkay bl = []
                 | null val = []
@@ -324,11 +325,12 @@ prop_SolveSound :: Sudoku -> Property
 prop_SolveSound s = isOkay s && isSudoku s ==> solution (solve s)
             where
                 solution :: Maybe Sudoku -> Bool
-                solution Nothing = False
+                solution Nothing = True
                 solution res = isSolutionOf (fromJust res) s
-
+solveble :: Sudoku
+solveble = undefined
 
 main :: IO()
-main = do --quickCheck prop_SolveSound
-          line <- getLine
-          readAndSolve $ "./tests/" ++ line ++ ".sud"
+main = do quickCheck prop_SolveSound
+          --line <- getLine
+          --readAndSolve $ "./tests/" ++ line ++ ".sud"
