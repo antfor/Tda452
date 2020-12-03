@@ -229,7 +229,7 @@ prop_update_updated s (x,y) c = (c ==) $ getValue p (update s p c)
 -- * F1
 
 solve :: Sudoku -> Maybe Sudoku
-solve s | isSudoku s = listToMaybe $ solve' s (sortPos (blocks s) (blanks s))
+solve s | isSudoku s = listToMaybe $ solve' s (sortPos (blocks s)  (blanks s))
         | otherwise  = Nothing
 
 solve' :: Sudoku -> [Pos] -> [Sudoku]
@@ -246,17 +246,19 @@ solve' s []  | isFilled s && isOkay s = [s]
 isNotOkay :: [Block] -> Bool
 isNotOkay = any (not . isOkayBlock)
 
-
 possibleValues :: Pos -> [Block] -> [Cell]
 possibleValues (r,c) bl =(map Just [1..9]) \\ ((!!) bl r ++ (!!) bl (c + 9) ++ (!!) bl (18 + (3 * (div c 3) + (div r 3))))
 
+numPossibleValues :: [Pos] -> [Block] -> [(Int, Pos)]
+numPossibleValues ps bl = map (\p -> (length $ possibleValues p bl, p)) ps
 
-sortPos :: [Block] -> [Pos] ->[Pos]
-sortPos bl = sortBy (cmp bl)
+
+sortPos :: [Block] -> [Pos] -> [Pos]
+sortPos bl = snd . unzip . sortBy (cmp bl) . (`numPossibleValues` bl)
     where
-        size :: [Block] -> Pos -> Int
-        size bl = length . (`possibleValues` bl)
-        cmp :: [Block] -> Pos -> Pos -> Ordering
+        size :: [Block] -> (Int, Pos) -> Int
+        size bl = fst
+        cmp :: [Block] -> (Int , Pos) -> (Int , Pos) -> Ordering
         cmp bl a b | sa < sb  = LT
                    | sa == sb = EQ
                    | sa > sb = GT
