@@ -300,6 +300,6 @@ solveble :: Sudoku
 solveble = undefined
 
 main :: IO()
-main = do quickCheck prop_SolveSound
-          --line <- getLine
-          --readAndSolve $ "./tests/" ++ line ++ ".sud"
+main = --do quickCheck prop_SolveSound
+          line <- getLine
+          readAndSolve $ "./tests/" ++ line ++ ".sud"

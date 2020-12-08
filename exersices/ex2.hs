@@ -1,5 +1,5 @@
 module Ex2 where
-import Test.QuickCheck
+--import Test.QuickCheck
 
 
 -- E1 ------------------------
@@ -22,7 +22,7 @@ sumsq n = n * n + sumsq (n-1)
 alternatve_sumsq n = sum [ i*i | i<-[1..n] ]
 
 
-prop_sumsq n = n>0 ==> sumsq n == n*(n+1)*(2*n+1) `div` 6
+--prop_sumsq n = n>0 ==> sumsq n == n*(n+1)*(2*n+1) `div` 6
 -- E3 ------------------------
 
 
@@ -68,15 +68,45 @@ numFactors n = length (allFactors n)
 
 multiply :: Num a => [a] -> a
 multiply [] = 1
-multiply x:xs = x * multiply xs
+multiply (x:xs) = x * multiply xs
 
---multiply :: Num a => [a] -> a
---multiply' xs =
+
+multiply' :: Num a => [a] -> a
+multiply' = foldr (*) 1
 
 -- E7 ------------------------
 
-duplicates :: Eq a => [a] -> Bool
-duplicates [] =
+--duplicates :: Eq a => [a] -> Bool
+--duplicates a = length a == nub a
+
+duplicates' :: Eq a => [a] -> Bool
+duplicates' []     = False
+duplicates' (x:xs) = elem x xs || duplicates' xs
+
+removeDuplicates :: Eq a => [a] -> [a]
+removeDuplicates [] = []
+removeDuplicates (x:xs) | elem x xs = removeDuplicates xs
+                        | otherwise = x:removeDuplicates xs
 
 -- E8 ------------------------
 -- E9 ------------------------
+
+data Month = January | February | March | April | May | June
+           | July | August | September | October | November | December
+           deriving (Eq,Ord,Show,Read,Bounded,Enum)
+
+daysInMonth :: Month -> Integer -> Integer
+daysInMonth February year | mod year 4 == 0 = 29
+                          | otherwise       = 28
+daysInMonth m _ | odd $ fromEnum m = 30
+                | otherwise = 31
+
+data Date = Date { day::Integer, month::Month, year::Integer }
+
+validDate :: Date -> Bool
+validDate (Date d m y) = 0 < d && d <= daysInMonth m y
+
+tomorrow :: Date -> Date
+tomorrow (Date y m d) | d<daysInMonth m y = Date y m (d+1)
+                      | m<December        = Date y (succ m) 1
+                      | otherwise         = Date (y+1) January 1
