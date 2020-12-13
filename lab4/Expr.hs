@@ -3,7 +3,7 @@ module Expr where
 import           Parsing
 import           Data.Maybe
 import           Data.Char
-import QuickCheck
+import Test.QuickCheck
 
 --Part I
 x :: Expr
@@ -25,6 +25,7 @@ sin :: Expr -> Expr
 sin = Unary Sin
 --A-----------------------------
 data Expr = Num Double | Var Char | Unary UnOp Expr | Binary BinOp Expr Expr
+    deriving Eq
 
 
 data Assoc = ALeft | ARight | ANone
@@ -49,6 +50,7 @@ instance Expression Expr where
 
 
 data UnOp  = Sin | Cos
+    deriving Eq
 
 instance UOP UnOp where
   showU Sin = preFix "sin" ""  --B
@@ -63,6 +65,7 @@ instance Expression UnOp where
     _ -> 9
 
 data BinOp = Mul | Add | Pow
+    deriving Eq
 
 instance BOP BinOp where
   showB Add = inFix " + " --B
@@ -94,8 +97,8 @@ class UOP a where
     evalU :: a -> Double -> Double
 
 size :: Expr -> Int
-size Binary _ e1 e2 = 1 + size e1 + size e2
-size Unary _ e = 1 + size e
+size (Binary _ e1 e2) = 1 + size e1 + size e2
+size (Unary _ e) = 1 + size e
 size _ = 0
 
 
@@ -124,13 +127,13 @@ eval (Binary op e1 e2) n = evalB op (eval e1 n) (eval e2 n)
 
 readExpr :: String -> Maybe Expr
 readExpr s = do
-  case parse expr s of
-    Nothing -> Nothing
-    Just e  -> if (null . snd) e then (Just . fst) e else Nothing
+  case parse expr (filter (/=' ')s) of
+    Nothing -> error "hej"
+    Just e  -> if (null . snd) e then (Just . fst) e else error "då"
 
 expr, term, factor :: Parser Expr -- todo use assoc and pres
-expr = foldl1 add <$> chain term (char '+')
-term = foldl1 mul <$> chain factor (char '*')
+expr = foldr1 add <$> chain term (char '+')
+term = foldr1 mul <$> chain factor (char '*')
 factor = Expr.sin <$> parsTrig "sin"
       <|> Expr.cos <$> parsTrig "cos"
       <|> Num <$> (readsP :: (Parser Double))
@@ -141,10 +144,10 @@ factor = Expr.sin <$> parsTrig "sin"
 
 --E-----------------------------
 prop_ShowReadExpr :: Expr -> Bool
-prop_ShowReadExpr e = e == readExpr (show e)
+prop_ShowReadExpr e = assocExpr e ==  (fromJust (readExpr (show e)))
 
-arbExpr :: Int -> Gen Expr
-arbExpr = undefined
+arbExpr :: Int -> Gen Expr --todo
+arbExpr = rExpr
 
 assocExpr :: Expr -> Expr --todo fix
 assocExpr (Binary Add (Binary Add e1 e2) e3) = assocExpr (Binary Add e1 (Binary Add e2 e3))
@@ -153,12 +156,33 @@ assocExpr (Binary op e1 e2) = Binary op (assocExpr e1) (assocExpr e2)
 assocExpr (Unary op e) = Unary op (assocExpr e)
 assocExpr e = e
 
+rExpr :: Int -> Gen Expr --todo
+rExpr s = frequency [(1,rNum),(s,rBin s)]
+    where
+        range = 4 -- integer range
+        rNum = elements $ map Num [0..range] -- non negative!
+        rBin s = do
+            let s' = s `div` 2
+            fun <- elements [1,2]
+            case fun of
+                1  -> do
+                    op <- elements [Sin,Cos]
+                    e  <- rExpr s'
+                    return $ Unary op e
+                2 -> do
+                    op <- elements [Add,Mul]
+                    e1 <- rExpr s'
+                    e2 <- rExpr s'
+                    return $ Binary op e1 e2
+
 instance Arbitrary Expr where
   arbitrary = sized arbExpr
 --F-----------------------------
 
 simplify :: Expr -> Expr
 simplify = undefined
+
+maybeEval :: Expr -> Maybe Expr 
 
 --G-----------------------------
 
