@@ -197,8 +197,8 @@ assocExpr (Unary op e) = Unary op (assocExpr e)
 assocExpr e = e
 --F-----------------------------
 
-simplify :: Expr -> Expr
-simplify = simplifyBin . assocExpr
+simplify :: Expr -> Expr --todo
+simplify = assocExpr
  where
   simplify' :: Expr -> Expr
   simplify' (Unary op e     ) = unaryS op (simplify' e)
@@ -211,13 +211,14 @@ simplify = simplifyBin . assocExpr
       where
           binList = binToList e op
           simList = map simplifyBin binList
-          list = h simList []
+          list = h simList (length simList)
           expr    = foldr1 (Binary op) list
-          h :: [Expr] -> [Expr] -> [Expr]
-          h [] l = l
-          h [x] l = x:l
-          h (e1:e2:es) l | s /= s2 = h (s:es) (l)
-                         | otherwise = h (e2:es) (h (e1:es) (l))
+
+          h :: [Expr] -> Int -> [Expr]
+          h xs 0 = xs
+          h [x] _ = [x]
+          h (e1:e2:es) n | s /= s2 = h (s:es) (n-1)
+                         | otherwise = h (e2:h(e1:es) (n-1)) (n-1)
                 where
                     s = binaryS op e1 e2
                     s2 = Binary op e1 e2
