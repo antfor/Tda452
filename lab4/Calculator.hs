@@ -24,8 +24,8 @@ setup window =
      fx      <- mkHTML "<i>f</i>(<i>x</i>)="  -- The text "f(x)="
      input   <- mkInput 20 "x"                -- The formula input
      draw    <- mkButton "Draw graph"         -- The draw button
-     diff    <- mkButton "diff"  -- The diff button
-     zoom    <- mkSlider (1, 10) 1  -- The diff button
+     diff    <- mkButton "diff"  -- The diff button                    --K
+     zoom    <- mkSlider (1, 10) 5  -- The diff button
        -- The markup "<i>...</i>" means that the text inside should be rendered
        -- in italics.
 
@@ -40,7 +40,7 @@ setup window =
 
      -- Interaction (install event handlers)
      on UI.click     draw  $ \ _ -> readAndDraw input zoom canvas
-     on UI.click     diff  $ \ _ -> diffAndDraw input zoom canvas
+     on UI.click     diff  $ \ _ -> diffAndDraw input zoom canvas           --K
      on valueChange' input $ \ _ -> readAndDraw input zoom canvas
      on valueChange' zoom $ \ _ -> readAndDraw input zoom canvas
 

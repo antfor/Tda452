@@ -34,7 +34,7 @@ data Expr =  Var | Num Double | Unary UnOp Expr | Binary BinOp Expr Expr
 class Expression a where
     pres :: a -> Int
 
-
+-- use the same precedence as haskell (https://rosettacode.org/wiki/Operator_precedence#Haskell)
 instance Expression Expr where
   pres e = case e of
     Num _         -> 9
@@ -56,7 +56,8 @@ instance UOP UnOp where
 
 instance Expression UnOp where
   pres e = case e of
-    _ -> 9
+    Sin -> 9
+    Cos -> 9
 
 data BinOp = Mul | Add
     deriving Eq
@@ -73,13 +74,6 @@ instance Expression BinOp where
   pres e = case e of
     Mul -> 7
     Add -> 6
-
-preFix :: String -> String -> String -> String
-preFix op s1 s2 = op ++ s1 ++ s2
-inFix :: String -> String -> String -> String
-inFix op s1 s2 = s1 ++ op ++ s2
-postFix :: String -> String -> String -> String
-postFix op s1 s2 = s1 ++ s2 ++ op
 
 
 class BOP a where
@@ -98,6 +92,13 @@ size (Binary _ e1 e2) = 1 + size e1 + size e2
 size (Unary _ e     ) = 1 + size e
 size _                = 0
 
+
+preFix :: String -> String -> String -> String
+preFix op s1 s2 = op ++ s1 ++ s2
+inFix :: String -> String -> String -> String
+inFix op s1 s2 = s1 ++ op ++ s2
+postFix :: String -> String -> String -> String
+postFix op s1 s2 = s1 ++ s2 ++ op
 --B-----------------------------
 instance Show Expr where
   show = showExpr
@@ -127,7 +128,7 @@ readExpr s = do
     Nothing -> Nothing
     Just e  -> if (null . snd) e then (Just . fst) e else Nothing
 
-expr, term, factor :: Parser Expr
+expr, term, factor :: Parser Expr -- todo förenkla
 expr = foldr1 add <$> chain term (char '+')
 term = foldr1 mul <$> chain factor (char '*')
 factor =
@@ -140,12 +141,11 @@ factor =
 
 --E-----------------------------
 prop_ShowReadExpr :: Expr -> Bool
-prop_ShowReadExpr e =
-  assocExpr e == showread e && (showread . showread) e == showread e
+prop_ShowReadExpr e = assocExpr e == showread e && (showread . showread) e == showread e
   where showread e = fromJust (readExpr (show e))
 
 
-arbExpr :: Int -> Gen Expr --todo use size ?
+arbExpr :: Int -> Gen Expr --todo use size and förenkla
 arbExpr s = frequency [(1, rNum), (1, return Var ), (s, rBin s)]
  where
   rNum = elements $ map Num [-5 .. 5]
@@ -175,7 +175,7 @@ assocExpr (Unary op e) = Unary op (assocExpr e)
 assocExpr e = e
 --F-----------------------------
 
-simplify :: Expr -> Expr --todo
+simplify :: Expr -> Expr --todo förenkla
 simplify = assocExpr . loop
  where
   loop e | e == e'   = e
@@ -236,8 +236,7 @@ simplify = assocExpr . loop
   addS e1 e2 | e1 == e2                      = mul (Num 2) e1      -- e+e = e * 2
   addS e1 (Binary Mul (Num n) e2) | e1 == e2 = mul (Num (n + 1)) e1--e + n*e = (n+1)*e
   addS (Binary Mul (Num n) e1) e2 | e1 == e2 = mul (Num (n + 1)) e1-- n*e + e = (n+1) *e
-  addS (Binary Mul e1 (Num m)) (Binary Mul e2 (Num n)) | e1 == e2 =
-    mul (Num (n + m)) e1 --e*m + e*n = e*(n+m)
+  addS (Binary Mul (Num m) e1) (Binary Mul (Num n) e2) | e1 == e2 = mul (Num (n + m)) e1 --e*m + e*n = e*(n+m)
 
   addS e1 e2 = add e1 e2
 
@@ -250,9 +249,34 @@ simplify = assocExpr . loop
   mulS e1      (Num m) = mul (Num m) e1
   mulS e1      e2      = mul e1 e2
 
-prop_Simplify :: Expr -> Bool
-prop_Simplify e = simplify (simplify e) == simplify e
 
+prop_Simplify :: Expr -> Double -> Bool -- todo remove!!
+prop_Simplify e n = maxSimplified && simplified && is (simplify e)
+ where
+  simplified = simplify (simplify e) == simplify e
+  maxSimplified    = isNum (simplify (replaceVar e))
+
+  replaceVar :: Expr -> Expr
+  replaceVar (Var            ) = num n
+  replaceVar (Unary op e     ) = Unary op (replaceVar e)
+  replaceVar (Binary op e1 e2) = Binary op (replaceVar e1) (replaceVar e2)
+  replaceVar e                 = e
+
+  isNum :: Expr -> Bool
+  isNum (Num n) = True
+  isNum _ = False
+
+  is (Unary op (Num n)) = False
+  is (Unary op e1) = is e1
+  is (Binary Add (Num 0) e1) = False
+  is (Binary Add e1 (Num 0)) = False
+  is (Binary Mul (Num 1) e1) = False
+  is (Binary Mul e1 (Num 1)) = False
+  is (Binary Mul (Num 0) e1) = False
+  is (Binary Mul e1 (Num 0)) = False
+  is (Binary op (Num e1) (Num e2)) = False
+  is (Binary op e1 e2) = is e1 && is e2
+  is _ = True
 
 --G-----------------------------
 
