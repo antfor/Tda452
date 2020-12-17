@@ -1,195 +1,190 @@
 module Expr where
 
-import           Parsing
-import           Data.Maybe
-import           Data.Char
-import           Data.List
-import           Test.QuickCheck
+import Parsing
+import Data.Char
+import Data.Maybe
+import Test.QuickCheck
 
 
---Part I
+{- Lab 4B (Standard lab)
+   Date: 16/12/2020
+   Authors: Anton Forsberg and Erik Hermansson
+   Lab group: 31
+ -}
+
+-- A ------------------------
+data Expr = Num Double | Opr Opr Expr Expr | Func Func Expr | Var -- | Sin Expr | Cos Expr | X-- | Funcs -- | Var x
+    deriving (Eq)
+
+data Opr = Add | Mul
+    deriving (Eq)
+
+data Func = Sin | Cos
+    deriving (Eq)
+
 x :: Expr
 x = Var
 
 num :: Double -> Expr
-num = Num
+num  = Num
 
-add :: Expr -> Expr -> Expr
-add = Binary Add
+add,mul :: Expr -> Expr -> Expr
+add = Opr Add
+mul = Opr Mul
 
-mul :: Expr -> Expr -> Expr
-mul = Binary Mul
-
-cos :: Expr -> Expr
-cos = Unary Cos
-
-sin :: Expr -> Expr
-sin = Unary Sin
-
---A-----------------------------
-data Expr =  Var | Num Double | Unary UnOp Expr | Binary BinOp Expr Expr
-    deriving Eq
-
-
-class Expression a where
-    pres :: a -> Int
-
--- use the same precedence as haskell (https://rosettacode.org/wiki/Operator_precedence#Haskell)
-instance Expression Expr where
-  pres e = case e of
-    Num _         -> 9
-    Var           -> 9
-    Unary op _    -> pres op
-    Binary op _ _ -> pres op
-
-
-data UnOp  = Sin | Cos
-    deriving Eq
-
-instance UOP UnOp where
-  showU Sin = preFix "sin " ""  --B
-  showU Cos = preFix "cos " "" --B
-  evalU Sin = Prelude.sin      --C
-  evalU Cos = Prelude.cos      --C
-  diffU Sin e = mul (Expr.cos e) (diffExpr e)                  --G
-  diffU Cos e = mul (mul (Num (-1)) (Expr.sin e)) (diffExpr e) --G
-
-instance Expression UnOp where
-  pres e = case e of
-    Sin -> 9
-    Cos -> 9
-
-data BinOp = Mul | Add
-    deriving Eq
-
-instance BOP BinOp where
-  showB Add = inFix " + " --B
-  showB Mul = inFix " * " --B
-  evalB Add = (+)         --C
-  evalB Mul = (*)         --C
-  diffB Add e1 e2 = add (diffExpr e1) (diffExpr e2)                   --G
-  diffB Mul e1 e2 = add (mul (diffExpr e1) e2) (mul e1 (diffExpr e2)) --G
-
-instance Expression BinOp where
-  pres e = case e of
-    Mul -> 7
-    Add -> 6
-
-
-class BOP a where
-    showB :: a -> String -> String -> String
-    evalB :: a -> Double -> Double -> Double
-    diffB :: a -> Expr -> Expr ->Expr
-
-class UOP a where
-    showU :: a -> String -> String
-    evalU :: a -> Double -> Double
-    diffU :: a -> Expr -> Expr
-
+sin,cos :: Expr -> Expr
+sin  = Func Sin
+cos  = Func Cos
 
 size :: Expr -> Int
-size (Binary _ e1 e2) = 1 + size e1 + size e2
-size (Unary _ e     ) = 1 + size e
-size _                = 0
+size (Num d) = 1
+size Var = 1
+size (Opr op e1 e2) = 1 + size e1 + size e2
+size (Func func e) = 1 + size e
 
 
-preFix :: String -> String -> String -> String
-preFix op s1 s2 = op ++ s1 ++ s2
-inFix :: String -> String -> String -> String
-inFix op s1 s2 = s1 ++ op ++ s2
-postFix :: String -> String -> String -> String
-postFix op s1 s2 = s1 ++ s2 ++ op
---B-----------------------------
-instance Show Expr where
-  show = showExpr
-
+-- B ------------------------
 showExpr :: Expr -> String
-showExpr  Var              = "x"
-showExpr (Num n          ) = show n
-showExpr (Unary op e     ) = showU op (par op e)
-showExpr (Binary op e1 e2) = showB op (par op e1) (par op e2)
+showExpr (Num d) = show d
+showExpr f@(Opr op e1 e2) = addPar f e1 ++ showOpr op ++ addPar f e2
+showExpr f@(Func func e) = showFunc func ++ addPar f e
+showExpr Var =  "x"
 
-par op e | pres op > pres e = inFix (showExpr e) "(" ")"
-         | otherwise        = showExpr e
+showFunc :: Func -> String
+showFunc Cos = "cos "
+showFunc Sin = "sin "
 
---C-----------------------------
+showOpr :: Opr -> String
+showOpr Add = "+"
+showOpr Mul = "*"
 
+addPar :: Expr -> Expr -> String
+addPar f e | precedence f > precedence e = "(" ++ showExpr e ++ ")"
+           | otherwise        = showExpr e
+
+-- use the same precedence as haskell (https://rosettacode.org/wiki/Operator_precedence#Haskell)
+precedence :: Expr -> Int
+precedence  Var = 9
+precedence (Num _) = 9
+precedence (Func func _) = 9
+precedence (Opr op _ _) = presOpr op
+    where
+        presOpr :: Opr -> Int
+        presOpr Add = 6
+        presOpr Mul = 7
+
+instance Show Expr where
+    show = showExpr
+-- C ------------------------
 eval :: Expr -> Double -> Double
-eval  Var              x = x
-eval (Num n          ) _ = n
-eval (Unary op e     ) n = evalU op (eval e n)
-eval (Binary op e1 e2) n = evalB op (eval e1 n) (eval e2 n)
+eval Var x = x
+eval (Num d) x = d
+eval (Opr op e1 e2) x =  evalOpr op (eval e1 x) (eval e2 x)
+eval (Func func e) x = evalFunc func (eval e x)
 
---D----------------------------- Todo
+evalOpr:: Opr -> Double -> Double -> Double
+evalOpr Add = (+)
+evalOpr Mul = (*)
+
+evalFunc :: Func -> Double -> Double
+evalFunc Sin = Prelude.sin
+evalFunc Cos = Prelude.cos
+
+-- D ------------------------
 
 readExpr :: String -> Maybe Expr
-readExpr s = do
-  case parse expr (filter (/= ' ') s) of
-    Nothing -> Nothing
-    Just e  -> if (null . snd) e then (Just . fst) e else Nothing
+readExpr s = let s' = filter (not.isSpace) s
+             in case parse expr s' of
+                Just (e,"") -> Just e
+                _           -> Nothing
 
-expr, term, factor :: Parser Expr -- todo förenkla
-expr = foldr1 add <$> chain term (char '+')
-term = foldr1 mul <$> chain factor (char '*')
-factor =
-  Expr.sin <$> parsTrig "sin"
-    <|> Expr.cos <$> parsTrig "cos"
-    <|> Num <$> (readsP :: (Parser Double))
-    <|> char '(' *>  expr <*  char ')'
-    <|> Var <$  char 'x'
-  where parsTrig trig = mapM_ char trig *> factor
 
---E-----------------------------
+expr :: Parser Expr
+expr   = foldr1 (Opr Add) <$> chain term (char '+')
+
+
+term :: Parser Expr
+term   = foldr1 (Opr Mul) <$> chain factor (char '*')
+
+sinFactor :: Parser Expr
+sinFactor = Func Sin <$> (stringParser "sin" *> factor)
+
+cosFactor:: Parser Expr
+cosFactor = Func Cos <$> (stringParser "cos" *> factor)
+
+var::Parser Expr
+var = char 'x' *> return Var
+
+factor:: Parser Expr
+factor = number <|> sinFactor <|> cosFactor <|> var <|> char '(' *> expr <* char ')'
+
+
+number :: Parser Expr
+number =  Num <$> readsP
+
+stringParser :: String -> Parser String
+stringParser str = sequence [char s | s <- str]
+
+-- E ------------------------
 prop_ShowReadExpr :: Expr -> Bool
-prop_ShowReadExpr e = assocExpr e == showread e && (showread . showread) e == showread e
-  where showread e = fromJust (readExpr (show e))
+prop_ShowReadExpr e = assocExpr e == fromJust (readExpr $ showExpr e)
 
 
-arbExpr :: Int -> Gen Expr --todo use size and förenkla
-arbExpr s = frequency [(1, rNum), (1, return Var ), (s, rBin s)]
- where
-  rNum = elements $ map Num [-5 .. 5]
-  rBin s = do
-    let s' = s `div` 2
-    fun <- elements [1, 2]
-    case fun of
-      1 -> do
-        op <- elements [Sin, Cos]
-        e  <- arbExpr s'
-        return $ Unary op e
-      2 -> do
-        op <- elements [Add, Mul]
-        e1 <- arbExpr s'
-        e2 <- arbExpr s'
-        return $ Binary op e1 e2
+assocExpr :: Expr -> Expr
+assocExpr (Opr Add (Opr Add e1 e2) e3) = assocExpr (add e1 (add e2 e3))
+assocExpr (Opr Mul (Opr Mul e1 e2) e3) = assocExpr (mul e1 (mul e2 e3))
+assocExpr (Opr op e1 e2) = Opr op (assocExpr e1) (assocExpr e2)
+assocExpr (Func op e) = Func op (assocExpr e)
+assocExpr e = e
+
+numGen :: Gen Expr
+numGen = do Num <$> (arbitrary :: Gen Double)
+
+oprGen :: Int -> Gen Expr
+oprGen n = do
+             opr <- oneof [return Add , return Mul]
+             -- -1 for operator, -1 for second expression
+             let s1 = n-2
+             n1 <- choose (1,s1)
+             e1 <- arbExpr n1
+             let s2 = (s1 - size e1) + 1
+             --n2 <- choose (1,s2)
+             e2 <- arbExpr s2
+             return $ Opr opr e1 e2
+
+funcGen :: Int -> Gen Expr
+funcGen n = do
+                func <- oneof [return Sin, return Cos]
+                --n1 <-choose (1,n-1)
+                e <- arbExpr (n-1)
+                return $ Func func e
+
+arbExpr :: Int -> Gen Expr
+arbExpr n | n < 2 = oneof [numGen, return Var]
+arbExpr 2 = funcGen 2
+arbExpr n = do oneof [oprGen n, funcGen n]
+
 
 instance Arbitrary Expr where
   arbitrary = sized arbExpr
 
+-- F ------------------------
 
-assocExpr :: Expr -> Expr --todo fix
-assocExpr (Binary Add (Binary Add e1 e2) e3) = assocExpr (add e1 (add e2 e3))
-assocExpr (Binary Mul (Binary Mul e1 e2) e3) = assocExpr (mul e1 (mul e2 e3))
-assocExpr (Binary op e1 e2) = Binary op (assocExpr e1) (assocExpr e2)
-assocExpr (Unary op e) = Unary op (assocExpr e)
-assocExpr e = e
---F-----------------------------
-
-simplify :: Expr -> Expr --todo förenkla
-simplify = assocExpr . loop
+simplify :: Expr -> Expr
+simplify = assocExpr . loop . assocExpr
  where
   loop e | e == e'   = e
          | otherwise = loop e'
     where e' = simplify' $ assocExpr e
 
   simplify' :: Expr -> Expr
-  simplify' (  Unary op e     ) = unaryS op (simplify' e)
-  simplify' e@(Binary op e1 e2) = expr
+  simplify' (  Func op e     ) = unaryS op (simplify' e)
+  simplify' e@(Opr op e1 e2) = expr
    where
     binList = binToList e op
     simList = map simplify' binList
     list    = simplifyBin simList
-    expr    = foldr1 (Binary op) list
+    expr    = foldr1 (Opr op) list
 
     simplifyBin :: [Expr] -> [Expr]
     simplifyBin [] = []
@@ -205,26 +200,26 @@ simplify = assocExpr . loop
      where
       res = maybeSimplify e1 es
       bs  = binaryS op e1 e2
-      b   = Binary op e1 e2
+      b   = Opr op e1 e2
 
   simplify' e = e
 
-  binToList :: Expr -> BinOp -> [Expr]
-  binToList (Binary op1 e1 (Binary op2 e2 e3)) op0 | all (op0 ==) [op1, op2] =
+  binToList :: Expr -> Opr -> [Expr]
+  binToList (Opr op1 e1 (Opr op2 e2 e3)) op0 | all (op0 ==) [op1, op2] =
     [e1, e2] ++ binToList e3 op0
-  binToList (Binary op1 e1 e2) op0 | op0 == op1 = [e1, e2]
+  binToList (Opr op1 e1 e2) op0 | op0 == op1 = [e1, e2]
   binToList e _ = [e]
 
-  binary :: BinOp -> (Expr -> Expr -> Expr)
+  binary :: Opr -> (Expr -> Expr -> Expr)
   binary Add = add
   binary Mul = mul
 
   -- "smart" constructors
-  unaryS :: UnOp -> Expr -> Expr
-  unaryS op (Num n) = Num $ evalU op n
-  unaryS op e       = Unary op e
+  unaryS :: Func -> Expr -> Expr
+  unaryS op (Num n) = Num $ evalFunc op n
+  unaryS op e       = Func op e
 
-  binaryS :: BinOp -> Expr -> Expr -> Expr
+  binaryS :: Opr -> Expr -> Expr -> Expr
   binaryS Add = addS
   binaryS Mul = mulS
 
@@ -234,9 +229,9 @@ simplify = assocExpr . loop
   addS (Num n) (Num m)                       = Num (n + m)
 
   addS e1 e2 | e1 == e2                      = mul (Num 2) e1      -- e+e = e * 2
-  addS e1 (Binary Mul (Num n) e2) | e1 == e2 = mul (Num (n + 1)) e1--e + n*e = (n+1)*e
-  addS (Binary Mul (Num n) e1) e2 | e1 == e2 = mul (Num (n + 1)) e1-- n*e + e = (n+1) *e
-  addS (Binary Mul (Num m) e1) (Binary Mul (Num n) e2) | e1 == e2 = mul (Num (n + m)) e1 --e*m + e*n = e*(n+m)
+  addS e1 (Opr Mul (Num n) e2) | e1 == e2 = mul (Num (n + 1)) e1--e + n*e = (n+1)*e
+  addS (Opr Mul (Num n) e1) e2 | e1 == e2 = mul (Num (n + 1)) e1-- n*e + e = (n+1) *e
+  addS (Opr Mul (Num m) e1) (Opr Mul (Num n) e2) | e1 == e2 = mul (Num (n + m)) e1 --e*m + e*n = e*(n+m)
 
   addS e1 e2 = add e1 e2
 
@@ -249,43 +244,35 @@ simplify = assocExpr . loop
   mulS e1      (Num m) = mul (Num m) e1
   mulS e1      e2      = mul e1 e2
 
+--properties for simplify
+prop_SimplifyCorrect :: Expr -> Double -> Bool -- can fail due to floating point precision
+prop_SimplifyCorrect e d = abs (eval (simplify e) d-eval e d) < 1e-3
 
-prop_Simplify :: Expr -> Double -> Bool -- todo remove!!
-prop_Simplify e n = maxSimplified && simplified && is (simplify e)
- where
-  simplified = simplify (simplify e) == simplify e
-  maxSimplified    = isNum (simplify (replaceVar e))
-
-  replaceVar :: Expr -> Expr
-  replaceVar (Var            ) = num n
-  replaceVar (Unary op e     ) = Unary op (replaceVar e)
-  replaceVar (Binary op e1 e2) = Binary op (replaceVar e1) (replaceVar e2)
-  replaceVar e                 = e
-
-  isNum :: Expr -> Bool
-  isNum (Num n) = True
-  isNum _ = False
-
-  is (Unary op (Num n)) = False
-  is (Unary op e1) = is e1
-  is (Binary Add (Num 0) e1) = False
-  is (Binary Add e1 (Num 0)) = False
-  is (Binary Mul (Num 1) e1) = False
-  is (Binary Mul e1 (Num 1)) = False
-  is (Binary Mul (Num 0) e1) = False
-  is (Binary Mul e1 (Num 0)) = False
-  is (Binary op (Num e1) (Num e2)) = False
-  is (Binary op e1 e2) = is e1 && is e2
-  is _ = True
-
---G-----------------------------
+prop_SimplifyMin :: Expr -> Bool
+prop_SimplifyMin e = isNum e' || isVar e'
+                    where e' = simplify e
+                          isNum (Num d) = True
+                          isNum _ = False
+                          isVar e = case e of
+                                    Var -> True
+                                    Func f e -> isVar e
+                                    Opr op e1 e2 -> isVar e1 || isVar e2
+                                    _ -> False
+-- G ------------------------
 
 differentiate :: Expr -> Expr
 differentiate = simplify . diffExpr . simplify
+ where
+    diffExpr :: Expr -> Expr
+    diffExpr  Var              = Num 1
+    diffExpr (Num _          ) = Num 0
+    diffExpr (Func op e     ) = Opr Mul (diffExpr e) (diffFunc op e)
+    diffExpr (Opr op e1 e2)   = diffOpr op e1 e2
 
+    diffFunc :: Func -> Expr -> Expr
+    diffFunc Sin e = Func Cos e
+    diffFunc Cos e = Opr Mul (Num (-1.0)) (Func Sin e)
 
-diffExpr :: Expr -> Expr
-diffExpr  Var              = Num 1
-diffExpr (Num _          ) = Num 0
-diffExpr (Unary op e     ) = diffU op e
-diffExpr (Binary op e1 e2) = diffB op e1 e2
+    diffOpr :: Opr -> Expr -> Expr -> Expr
+    diffOpr Add e1 e2 = Opr Add (diffExpr e1) (diffExpr e2)
+    diffOpr Mul e1 e2 = Opr Add (Opr Mul (diffExpr e1) e2) (Opr Mul e1 (diffExpr e2))

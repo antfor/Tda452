@@ -8,12 +8,6 @@ import qualified Graphics.UI.Threepenny as UI
 
 import Expr
 
-{- Lab 4B (Standard lab)
-   Date: 16/12/2020
-   Authors: Anton Forsberg and Erik Hermansson
-   Lab group: 31
- -}
-
 canWidth,canHeight :: Num a => a
 canWidth  = 300
 canHeight = 300
